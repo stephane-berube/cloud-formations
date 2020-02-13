@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 # sb - test pipeline
 # sb - test pipeline second change
 # sb - test pipeline third change
+# sb - test pipeline fourth change
 # Version 1.0 - Initial version
 # Version 1.1 - Add Admin role trust with master
 # Version 1.2 - Add Nexus role for cots account
