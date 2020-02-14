@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
+# Sb - test - pipeline
 # Version 1.0 - Initial version, includes Cost tag, Backup Tag
 # Version 1.1 - Fixing initial template
 # Version 1.2 - Add Mandatory Tags for patching
