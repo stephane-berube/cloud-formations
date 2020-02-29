@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 # TODO: EC2 - Create CW disk usage alarms/monitoring
 #       RDS - Create CW disk usage alarms/monitoring
 
-# TODO: Ability to restore
+# TODO: Test ability to restore EC2/RDS
 
 Description: JIRA
 
@@ -102,13 +102,8 @@ Resources:
         EC2Ami: !Ref EC2Ami
         EC2RootVolumeSize: !Ref EC2RootVolumeSize
 
-        # ===== EBS Section =====
-        EBSMount: no # TODO
-        EBSSize: "AWS::NoValue" # TODO
-
   EBSAppVolume:
     Type: AWS::EC2::Volume
-    #DependsOn: EC2
     Properties:
       Size: !Ref EC2AppVolumeSize
       AvailabilityZone: !GetAtt EC2.Outputs.AvailabilityZone
@@ -128,7 +123,6 @@ Resources:
 
   EBSAppMountPoint:
     Type: AWS::EC2::VolumeAttachment
-    #DependsOn: EC2
     Properties:
       InstanceId: !GetAtt EC2.Outputs.InstanceId
       VolumeId: !Ref EBSAppVolume
@@ -136,7 +130,6 @@ Resources:
 
   EBSDataVolume:
     Type: AWS::EC2::Volume
-    #DependsOn: EC2
     Properties:
       Size: !Ref EC2DataVolumeSize
       AvailabilityZone: !GetAtt EC2.Outputs.AvailabilityZone
@@ -156,7 +149,6 @@ Resources:
 
   EBSDataMountPoint:
     Type: AWS::EC2::VolumeAttachment
-    #DependsOn: EC2
     Properties:
       InstanceId: !GetAtt EC2.Outputs.InstanceId
       VolumeId: !Ref EBSDataVolume
