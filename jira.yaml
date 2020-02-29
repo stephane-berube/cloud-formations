@@ -84,6 +84,7 @@ Resources:
   EC2:
     Type: AWS::CloudFormation::Stack
     Properties:
+      # FIXME
       ## TemplateURL: !Join [ '', [!Ref S3Templates, "ec2.yaml" ]]
       TemplateURL: "https://ised-sb-test.s3.ca-central-1.amazonaws.com/ec2.yaml"
       Parameters:
@@ -168,6 +169,7 @@ Resources:
   RDS:
     Type: AWS::CloudFormation::Stack
     Properties:
+      # FIXME
       ## TemplateURL: !Join [ '', [!Ref S3Templates, "rds.yaml" ]]
       TemplateURL: "https://ised-sb-test.s3.ca-central-1.amazonaws.com/rds.yaml"
       Parameters:
