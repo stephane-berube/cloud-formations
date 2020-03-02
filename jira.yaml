@@ -18,6 +18,9 @@ Parameters:
   JIRAProjectKey:
     Type: String
     Default: jira
+  ISEDProjectId:
+    Type: String
+    Default: ccots-jira
   CostCentre:
     Type: String
     Default: cio-rdad
@@ -90,6 +93,7 @@ Resources:
       Parameters:
         # ===== General Section =====
         JIRAProjectKey: !Ref JIRAProjectKey
+        ISEDProjectId: !Ref ISEDProjectId
         CostCentre: !Ref CostCentre
         Environment: !Ref Environment
         VPCName: !Ref VPCName
@@ -101,6 +105,9 @@ Resources:
         EC2Size: t3.large
         EC2Ami: !Ref EC2Ami
         EC2RootVolumeSize: !Ref EC2RootVolumeSize
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              Fn::Sub: "sg-ec2-atlassian-${Environment}"
 
   EBSAppVolume:
     Type: AWS::EC2::Volume
@@ -163,6 +170,7 @@ Resources:
       Parameters:
         # ===== General Section =====
         JIRAProjectKey: !Ref JIRAProjectKey
+        ISEDProjectId: !Ref ISEDProjectId
         CostCentre: !Ref CostCentre
         Environment: !Ref Environment
         VPCName: !Ref VPCName
