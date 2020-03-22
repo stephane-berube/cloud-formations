@@ -31,6 +31,9 @@ Parameters:
     AllowedValues:
       - subneta
       - subnetb
+  JIRAInstallerUrl:
+    Description: The Url to the installer (.bin)
+    Type: String
   EC2Ami:
     Type: String
     Description: Specify if restoring from Ami, otherwise leave blank
@@ -101,6 +104,15 @@ Resources:
         EC2Size: t3.large
         EC2Ami: !Ref EC2Ami
         EC2RootVolumeSize: !Ref EC2RootVolumeSize
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash -xe
+
+            # Get custom files
+            wget https://github.com/stephane-berube/cots-mods/archive/jira.zip -O /tmp/pkg.zip
+            unzip /tmp/pkg.zip -d /tmp
+
+            bash /tmp/cots-mods-jira/setup.sh "${JIRAInstallerUrl}" "${EC2DataVolumeMount}" "${EC2AppVolumeMount}" "${Environment}"
 
   EBSAppVolume:
     Type: AWS::EC2::Volume
