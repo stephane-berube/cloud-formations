@@ -223,11 +223,9 @@ Resources:
   IngressPostgres:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      Description: Allow incoming connections from EC2s from VPC to RDS on port 5432 (Postgresql)
+      Description: Allow incoming connections from EC2 to RDS on port 5432 (Postgresql)
       GroupId: !GetAtt RDS.Outputs.RDSSecurityGroup
       IpProtocol: tcp
       FromPort: 5432
       ToPort: 5432
-      CidrIp:
-        Fn::ImportValue:
-          Fn::Sub:  "vpc-cidrblock-${VPCName}-${Environment}"
+      CidrIp: !Join [ '', [ !GetAtt EC2.Outputs.EC2PrivateIp, "/32" ] ]
