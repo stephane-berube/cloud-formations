@@ -65,6 +65,9 @@ Parameters:
   RDSEngineVersion:
     Type: String
     Default: 9.6.15
+  DBIdentifier:
+    Type: String
+    Default: crowd
   RDSSnapshot:
     Description: Specify if restoring from snapshot
     Type: String
@@ -168,11 +171,14 @@ Resources:
       TemplateURL: !Join [ '', [!Ref S3Templates, "rds.yaml" ]]
       Parameters:
         # ===== General Section =====
-        JIRAProjectKey: !Ref JIRAProjectKey
+        DBIdentifier: !Ref DBIdentifier
         ISEDProjectId: !Ref ISEDProjectId
         CostCentre: !Ref CostCentre
         Environment: !Ref Environment
         VPCName: !Ref VPCName
+        VPCId:
+          Fn::ImportValue:
+            Fn::Sub: "vpc-${VPCName}-${Environment}"
         Schedule: !If [ IsProd, 24-7, office-hours ]
         # ===== RDS Section =====
         RDSEngine: !Ref RDSEngine
@@ -182,7 +188,6 @@ Resources:
         RDSSnapshot: !Ref RDSSnapshot
         RDSBackupRetentionPeriod: !If [ IsProd, 30, 7 ]
         RDSMasterUserPassword: !Ref RDSMasterUserPassword
-        DBParameterGroupName: db-parameter-group-postgres96
 
   # Allow incoming connections on port 5432 from this VPC
   IngressPostgres:
