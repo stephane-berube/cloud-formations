@@ -34,6 +34,12 @@ Parameters:
   JIRAInstallerUrl:
     Description: The Url to the installer (.bin)
     Type: String
+  ConnectToCrowd:
+    Type: String
+    Default: True
+    AllowedValues:
+      - True
+      - False
   EC2Ami:
     Type: String
     Description: Specify if restoring from Ami, otherwise leave blank
@@ -82,6 +88,7 @@ Conditions:
   IsProd: !Equals [ !Ref Environment, prod ]
   IsEC2Restore: !Equals [ !Ref EC2Ami, "" ]
   IsRDSRestore: !Equals [ !Ref RDSSnapshot, "" ]
+  IsConnectedToCrowd: !Equals [ !Ref ConnectToCrowd, "True" ]
 
 Resources:
 
@@ -179,6 +186,7 @@ Resources:
   # Allow incoming connection on Crowd's listening port from JIRA's sg
   IngressCrowd:
     Type: AWS::EC2::SecurityGroupIngress
+    Condition: IsConnectedToCrowd
     Properties:
       GroupId:
         Fn::ImportValue:
