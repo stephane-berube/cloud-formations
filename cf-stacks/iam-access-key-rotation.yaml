@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# Version 1.0 - Initial version
+Description: Deploys a Lambda to rotates IAM keys on a schedule via CloudWatch
+
+Parameters:
+  AccountIDMaster:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: AccountIDMaster
+  S3BucketNamePrefix:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: S3BucketNamePrefix
+  DoNotReplyEmail:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: DoNotReplyEmail
+
+Resources:
+  # The CloudWatch rule that will trigger our lambda
+  #
+  # We pass a "FromEmail" parameter to the lambda so it knows which email
+  # address to use when sending notifications
+  RotateKeysEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: "rate(1 day)"
+      Targets:
+        - Arn: !GetAtt RotateKeysFunction.Arn
+          Id: !Ref RotateKeysFunction
+          Input: !Sub '{"FromEmail": "${DoNotReplyEmail}"}'
+
+  RotateKeysFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt RotateKeysRole.Arn
+      Code:
+        S3Bucket: !Sub "${S3BucketNamePrefix}-${AccountIDMaster}-lambdas"
+        S3Key: ised-rotate-iam-keys.zip
+      Runtime: nodejs12.x
+
+  # Allow the CloudWatch Event Rule above to trigger our Lambda
+  PermitCloudWatch:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref RotateKeysFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RotateKeysEventRule.Arn
+
+  RotateKeysRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ised-iam-key-rotation-role
+      ManagedPolicyArns:
+        # Allows Lambda to log to CloudWatch, among other things
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+
+  # IAM permissions to list/delete/create IAM access keys
+  RotateKeysIAMPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref RotateKeysRole
+      PolicyName: ised-iam-key-rotation-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "iam:DeleteAccessKey"
+              - "iam:ListUsers"
+              - "iam:CreateAccessKey"
+              - "iam:ListAccessKeys"
+            Resource: "*"
+
+  # Key expiry notifications
+  # TODO: Limit sending emails to a specifc email address
+  RotateKeysNotifyPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref RotateKeysRole
+      PolicyName: ised-iam-key-rotation-notify-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "iam:GetUser"
+              - "ses:SendEmail"
+              - "ses:SendRawEmail"
+            Resource: "*"
+
