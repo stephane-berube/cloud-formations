@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# Version 1.0 - Initial version
+# TODO: Merge this with config.yaml ?
+Description: TODO
+
+Parameters:
+  AccountIDMaster:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: AccountIDMaster
+  S3BucketNamePrefix:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: S3BucketNamePrefix
+
+Resources:
+  TerminationConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ised-config-termination-rule
+      Description: Checks whether your resources have Termination Protection enabled.
+      Scope:
+        ComplianceResourceTypes:
+        - AWS::EC2::Instance
+        - AWS::RDS::DBInstance
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: !GetAtt TerminationDetectionFunction.Arn
+        SourceDetails:
+          -
+            EventSource: aws.config
+            MessageType: ConfigurationItemChangeNotification
+          -
+            EventSource: aws.config
+            MessageType: OversizedConfigurationItemChangeNotification
+
+  TerminationDetectionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TerminationConfigRole.Arn
+      Code:
+        S3Bucket: !Sub "${S3BucketNamePrefix}-${AccountIDMaster}-lambdas"
+        S3Key: ised-config-termination.zip
+      Runtime: nodejs12.x
+
+  # Allow the Config Rule above to trigger our Lambda
+  PermitConfig:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref TerminationDetectionFunction
+      Principal: config.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+
+  TerminationConfigRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ised-config-termination-role
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSConfigRulesExecutionRole"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+
+  # Allow our lambda to log to CloudWatch
+  CloudWatchLogsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref TerminationConfigRole
+      PolicyName: ised-config-termination-cw-logs-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Join [ "", [ "arn:aws:logs:", !Sub "${AWS::Region}", ":", !Sub "${AWS::AccountId}", ":log-group:/aws/lambda/", !Ref TerminationDetectionFunction, ":*" ] ]
+
+  # The information we're looking for (DisableApiTermination) is not in the AWS
+  # Config attributes, so we have to resort to describing the instance
+  EC2RDSDescribeInstanceAttributePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref TerminationConfigRole
+      PolicyName: ised-config-termination-ec2-rds-describe-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "ec2:DescribeInstanceAttribute"
+              - "rds:DescribeDBInstances"
+            Resource: "*"
