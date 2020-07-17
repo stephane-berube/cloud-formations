@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# Version 1.0 - Initial version
+Description: Template to create IAM users. Version 1.0
+
+Parameters:
+  UserName:
+    Type: String
+    Default: sb-tst
+  Password:
+    Type: String
+    NoEcho: True
+  ManagedPolicyArns:
+    Type: String
+  S3Templates:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: S3Templates
+
+Resources:
+  User:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      # TemplateURL: !Join [ '', [!Ref S3Templates, "iam-user.yaml" ]]
+      TemplateURL: https://ised-sb-test-sandbox02.s3.ca-central-1.amazonaws.com/iam-user.yaml
+      Parameters:
+        UserName: !Ref UserName
+        Password: !Ref Password
+        ManagedPolicyArns: !Ref ManagedPolicyArns
+
+  # To attach custom IAM::Policy or IAM::ManagedPolicy, create them as resources here
+  # and attach to the user via the "Users" property of the policy with the following
+  # as the value: !GetAtt User.Outputs.IAMUser
+

@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# Version 1.0 - Initial version
+Description: Template to create IAM users. Version 1.0
+
+Parameters:
+  UserName:
+    Type: String
+  Password:
+    Type: String
+    NoEcho: True
+  ManagedPolicyArns:
+    #Type: CommaDelimitedList
+    Type: String
+    Default: ""
+
+Conditions:
+  HasAdditionalPolicies: !Not [ !Equals [ !Ref ManagedPolicyArns, "" ] ]
+
+Resources:
+  IAMUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
+      LoginProfile:
+        Password: !Ref Password
+      ManagedPolicyArns:
+        !If
+          - HasAdditionalPolicies
+          - !Split
+            - ','
+            - !Join
+              - ','
+              - - !ImportValue iam-policy-enforce-mfa
+                - !Ref ManagedPolicyArns
+          - - !ImportValue iam-policy-enforce-mfa
+
+      # Append "iam-policy-enforce-mfa" to "ManagedPolicyArns" array
+      # ref: https://gist.github.com/magnetikonline/a6cfc522a1e9f876b75962f5f553c8e5#gistcomment-3034761
+      #ManagedPolicyArns:
+      #  !If
+      #    - HasAdditionalPolicies
+      #    - !Split
+      #      - ','
+      #      - !Join
+      #        - ','
+      #        - - !ImportValue iam-policy-enforce-mfa
+      #          - !Join
+      #            - ','
+      #            - !Ref ManagedPolicyArns
+      #    - !ImportValue iam-policy-enforce-mfa
+
+Outputs:
+  IAMUser:
+    Value: !Ref IAMUser
