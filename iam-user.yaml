@@ -12,6 +12,9 @@ Parameters:
     #Type: CommaDelimitedList
     Type: String
     Default: ""
+  Serial:
+    Type: String
+    Default: 1
 
 Conditions:
   HasAdditionalPolicies: !Not [ !Equals [ !Ref ManagedPolicyArns, "" ] ]
@@ -34,20 +37,18 @@ Resources:
                 - !Ref ManagedPolicyArns
           - - !ImportValue iam-policy-enforce-mfa
 
-      # Append "iam-policy-enforce-mfa" to "ManagedPolicyArns" array
-      # ref: https://gist.github.com/magnetikonline/a6cfc522a1e9f876b75962f5f553c8e5#gistcomment-3034761
-      #ManagedPolicyArns:
-      #  !If
-      #    - HasAdditionalPolicies
-      #    - !Split
-      #      - ','
-      #      - !Join
-      #        - ','
-      #        - - !ImportValue iam-policy-enforce-mfa
-      #          - !Join
-      #            - ','
-      #            - !Ref ManagedPolicyArns
-      #    - !ImportValue iam-policy-enforce-mfa
+  IAMAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Serial: !Ref Serial
+      UserName: !Ref IAMUser
+
+  IAMSecretKey:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Ref IAMUser
+      Description: IAM User Secret Key
+      SecretString: !Sub '{"accesskey": "${IAMAccessKey}", "secretkey": "${IAMAccessKey.SecretAccessKey}"}'
 
 Outputs:
   IAMUser:

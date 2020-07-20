@@ -11,6 +11,9 @@ Parameters:
     NoEcho: True
   ManagedPolicyArns:
     Type: String
+  Serial:
+    Type: String
+    Default: 1
   S3Templates:
     Type: AWS::SSM::Parameter::Value<String>
     Default: S3Templates
@@ -25,8 +28,8 @@ Resources:
         UserName: !Ref UserName
         Password: !Ref Password
         ManagedPolicyArns: !Ref ManagedPolicyArns
+        Serial: !Ref Serial
 
   # To attach custom IAM::Policy or IAM::ManagedPolicy, create them as resources here
   # and attach to the user via the "Users" property of the policy with the following
   # as the value: !GetAtt User.Outputs.IAMUser
-
