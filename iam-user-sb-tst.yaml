@@ -10,8 +10,10 @@ Parameters:
     Type: String
     NoEcho: True
   ManagedPolicyArns:
+    Description: Comma-separated list of IAM Policy ARNs
     Type: String
   Serial:
+    Description: Increment this number by one to rotate the user's IAM Access Key
     Type: String
     Default: 1
   S3Templates:

@@ -9,10 +9,11 @@ Parameters:
     Type: String
     NoEcho: True
   ManagedPolicyArns:
-    #Type: CommaDelimitedList
+    Description: Comma-separated list of IAM Policy ARNs
     Type: String
     Default: ""
   Serial:
+    Description: Increment this number by one to rotate the user's IAM Access Key
     Type: String
     Default: 1
 
