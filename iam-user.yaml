@@ -8,6 +8,8 @@ Parameters:
   Password:
     Type: String
     NoEcho: True
+  Email:
+    Type: String
   ManagedPolicyArns:
     Description: Comma-separated list of IAM Policy ARNs
     Type: String
@@ -37,6 +39,11 @@ Resources:
               - - !ImportValue iam-policy-enforce-mfa
                 - !Ref ManagedPolicyArns
           - - !ImportValue iam-policy-enforce-mfa
+      Tags:
+        - Key: ised-contact-email
+          Value: !Ref Email
+        - Key: ised-stack-id
+          Value: !Ref "AWS::StackId"
 
   IAMAccessKey:
     Type: AWS::IAM::AccessKey
