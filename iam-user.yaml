@@ -22,18 +22,18 @@ Parameters:
     Type: String
     NoEcho: True
   Email:
+    Description: Where to send key-rotation notifications, if applicable
     Type: String
   ManagedPolicyArns:
     Description: Comma-separated list of IAM Policy ARNs
-    Type: String
-    Default: ""
+    Type: CommaDelimitedList
   Serial:
     Description: Increment this number by one to rotate the user's IAM Access Key
     Type: String
     Default: 1
 
 Conditions:
-  HasAdditionalPolicies: !Not [ !Equals [ !Ref ManagedPolicyArns, "" ] ]
+  HasAdditionalPolicies: !Not [ !Equals [ !Join [ "", !Ref ManagedPolicyArns ], "" ] ]
   HasConsoleAccess: !Equals [ !Ref ConsoleAccess, true ]
   HasNoConsoleAccess: !Not [ !Equals [ !Ref ConsoleAccess, true ] ]
   HasAccessKey: !Equals [ !Ref CreateAccessKey, true ]
@@ -46,16 +46,13 @@ Resources:
       UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
       LoginProfile:
           Password: !Ref Password
+      Groups:
+        - !ImportValue iam-group-enforce-mfa
       ManagedPolicyArns:
         !If
           - HasAdditionalPolicies
-          - !Split
-            - ','
-            - !Join
-              - ','
-              - - !ImportValue iam-policy-enforce-mfa
-                - !Ref ManagedPolicyArns
-          - - !ImportValue iam-policy-enforce-mfa
+          - !Ref ManagedPolicyArns
+          - !Ref "AWS::NoValue"
       Tags:
         - Key: ised-contact-email
           Value: !Ref Email
@@ -67,16 +64,13 @@ Resources:
     Condition: HasNoConsoleAccess
     Properties:
       UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
+      Groups:
+        - !ImportValue iam-group-enforce-mfa
       ManagedPolicyArns:
         !If
           - HasAdditionalPolicies
-          - !Split
-            - ','
-            - !Join
-              - ','
-              - - !ImportValue iam-policy-enforce-mfa
-                - !Ref ManagedPolicyArns
-          - - !ImportValue iam-policy-enforce-mfa
+          - !Ref ManagedPolicyArns
+          - !Ref "AWS::NoValue"
       Tags:
         - Key: ised-contact-email
           Value: !Ref Email
@@ -97,7 +91,3 @@ Resources:
       Name: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
       Description: IAM User Secret Key
       SecretString: !Sub '{"accesskey": "${IAMAccessKey}", "secretkey": "${IAMAccessKey.SecretAccessKey}"}'
-
-Outputs:
-  IAMUser:
-    Value: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]

@@ -1,8 +1,17 @@
 AWSTemplateFormatVersion: "2010-09-09"
 # Version 1.0 - Initial version
-Description: Template to generic IAM policies. Version 1.0
+Description: Template to create "Enforce MFA" IAM group/policy. Version 1.0
 
 Resources:
+  EnforceMFAGroup:
+    Type: AWS::IAM::Group
+    Properties:
+     # If you specify a name, you cannot perform updates that require replacement of this resource
+     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-group.html
+     # GroupName: EnforceMFA
+     ManagedPolicyArns:
+      - !Ref EnforceMFAPolicy
+
   # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_aws_my-sec-creds-self-manage.html
   EnforceMFAPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -124,6 +133,10 @@ Resources:
       }
 
 Outputs:
+  EnforceMFAGroup:
+    Value: !Ref EnforceMFAGroup
+    Export:
+      Name: iam-group-enforce-mfa
   EnforceMFAPolicy:
     Value: !Ref EnforceMFAPolicy
     Export:
