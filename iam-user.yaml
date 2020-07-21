@@ -5,7 +5,14 @@ Description: Template to create IAM users. Version 1.0
 Parameters:
   UserName:
     Type: String
+  ConsoleAccess:
+    Type: String
+    AllowedValues:
+      - True
+      - False
+    Default: False
   Password:
+    Description: Password is required if account has Console access
     Type: String
     NoEcho: True
   Email:
@@ -21,14 +28,38 @@ Parameters:
 
 Conditions:
   HasAdditionalPolicies: !Not [ !Equals [ !Ref ManagedPolicyArns, "" ] ]
+  HasConsoleAccess: !Equals [ !Ref ConsoleAccess, true ]
+  HasNoConsoleAccess: !Not [ !Equals [ !Ref ConsoleAccess, true ] ]
 
 Resources:
-  IAMUser:
+  IAMConsoleUser:
     Type: AWS::IAM::User
+    Condition: HasConsoleAccess
     Properties:
       UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
       LoginProfile:
-        Password: !Ref Password
+          Password: !Ref Password
+      ManagedPolicyArns:
+        !If
+          - HasAdditionalPolicies
+          - !Split
+            - ','
+            - !Join
+              - ','
+              - - !ImportValue iam-policy-enforce-mfa
+                - !Ref ManagedPolicyArns
+          - - !ImportValue iam-policy-enforce-mfa
+      Tags:
+        - Key: ised-contact-email
+          Value: !Ref Email
+        - Key: ised-stack-id
+          Value: !Ref "AWS::StackId"
+
+  IAMUser:
+    Type: AWS::IAM::User
+    Condition: HasNoConsoleAccess
+    Properties:
+      UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
       ManagedPolicyArns:
         !If
           - HasAdditionalPolicies
@@ -47,17 +78,19 @@ Resources:
 
   IAMAccessKey:
     Type: AWS::IAM::AccessKey
+    Condition: HasNoConsoleAccess
     Properties:
       Serial: !Ref Serial
-      UserName: !Ref IAMUser
+      UserName: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
 
   IAMSecretKey:
     Type: AWS::SecretsManager::Secret
+    Condition: HasNoConsoleAccess
     Properties:
-      Name: !Ref IAMUser
+      Name: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
       Description: IAM User Secret Key
       SecretString: !Sub '{"accesskey": "${IAMAccessKey}", "secretkey": "${IAMAccessKey.SecretAccessKey}"}'
 
 Outputs:
   IAMUser:
-    Value: !Ref IAMUser
+    Value: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
