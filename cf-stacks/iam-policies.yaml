@@ -112,7 +112,10 @@ Resources:
                 ],
                 "Resource": "*",
                 "Condition": {
-                    "BoolIfExists": {
+                    # "BoolIfExists": {
+                    # Don't apply MFA on CLI access
+                    # https://aws.amazon.com/premiumsupport/knowledge-center/mfa-iam-user-aws-cli/
+                    "Bool": {
                         "aws:MultiFactorAuthPresent": "false"
                     }
                 }
