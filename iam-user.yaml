@@ -11,6 +11,12 @@ Parameters:
       - True
       - False
     Default: False
+  CreateAccessKey:
+    Type: String
+    AllowedValues:
+      - True
+      - False
+    Default: False
   Password:
     Description: Password is required if account has Console access
     Type: String
@@ -30,6 +36,7 @@ Conditions:
   HasAdditionalPolicies: !Not [ !Equals [ !Ref ManagedPolicyArns, "" ] ]
   HasConsoleAccess: !Equals [ !Ref ConsoleAccess, true ]
   HasNoConsoleAccess: !Not [ !Equals [ !Ref ConsoleAccess, true ] ]
+  HasAccessKey: !Equals [ !Ref CreateAccessKey, true ]
 
 Resources:
   IAMConsoleUser:
@@ -78,14 +85,14 @@ Resources:
 
   IAMAccessKey:
     Type: AWS::IAM::AccessKey
-    Condition: HasNoConsoleAccess
+    Condition: HasAccessKey
     Properties:
       Serial: !Ref Serial
       UserName: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
 
   IAMSecretKey:
     Type: AWS::SecretsManager::Secret
-    Condition: HasNoConsoleAccess
+    Condition: HasAccessKey
     Properties:
       Name: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
       Description: IAM User Secret Key
