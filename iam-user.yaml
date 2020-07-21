@@ -35,34 +35,17 @@ Parameters:
 Conditions:
   HasAdditionalPolicies: !Not [ !Equals [ !Join [ "", !Ref ManagedPolicyArns ], "" ] ]
   HasConsoleAccess: !Equals [ !Ref ConsoleAccess, true ]
-  HasNoConsoleAccess: !Not [ !Equals [ !Ref ConsoleAccess, true ] ]
   HasAccessKey: !Equals [ !Ref CreateAccessKey, true ]
 
 Resources:
-  IAMConsoleUser:
-    Type: AWS::IAM::User
-    Condition: HasConsoleAccess
-    Properties:
-      UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
-      LoginProfile:
-          Password: !Ref Password
-      Groups:
-        - !ImportValue iam-group-enforce-mfa
-      ManagedPolicyArns:
-        !If
-          - HasAdditionalPolicies
-          - !Ref ManagedPolicyArns
-          - !Ref "AWS::NoValue"
-      Tags:
-        - Key: ised-contact-email
-          Value: !Ref Email
-        - Key: ised-stack-id
-          Value: !Ref "AWS::StackId"
-
   IAMUser:
     Type: AWS::IAM::User
-    Condition: HasNoConsoleAccess
     Properties:
+      LoginProfile:
+        !If
+          - HasConsoleAccess
+          - Password: !Ref Password
+          - !Ref "AWS::NoValue"
       UserName: !Join ["-", [ iam-user, !Ref UserName ] ]
       Groups:
         - !ImportValue iam-group-enforce-mfa
@@ -82,12 +65,12 @@ Resources:
     Condition: HasAccessKey
     Properties:
       Serial: !Ref Serial
-      UserName: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
+      UserName: !Ref IAMUser
 
   IAMSecretKey:
     Type: AWS::SecretsManager::Secret
     Condition: HasAccessKey
     Properties:
-      Name: !If [ HasConsoleAccess, !Ref IAMConsoleUser, !Ref IAMUser ]
+      Name: !Ref IAMUser
       Description: IAM User Secret Key
       SecretString: !Sub '{"accesskey": "${IAMAccessKey}", "secretkey": "${IAMAccessKey.SecretAccessKey}"}'
