@@ -54,7 +54,7 @@ Resources:
       Code:
         S3Bucket: !Sub "${S3BucketNamePrefix}-${AccountIDMaster}-lambdas"
         S3Key: ised-config-s3.zip
-      Runtime: nodejs12.x
+      Runtime: python3.7
 
   # Allow the Config Rule above to trigger our Lambda
   PermitConfig:
