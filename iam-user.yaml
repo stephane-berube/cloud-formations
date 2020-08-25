@@ -11,12 +11,6 @@ Parameters:
       - True
       - False
     Default: False
-  CreateAccessKey:
-    Type: String
-    AllowedValues:
-      - True
-      - False
-    Default: False
   Password:
     Description: Password is required if account has Console access
     Type: String
@@ -27,15 +21,25 @@ Parameters:
   ManagedPolicyArns:
     Description: Comma-separated list of IAM Policy ARNs
     Type: CommaDelimitedList
-  Serial:
-    Description: Increment this number by one to rotate the user's IAM Access Key
+  CreatePrimaryAccessKey:
     Type: String
-    Default: 1
+    AllowedValues:
+      - True
+      - False
+    Default: True
+  CreateSecondaryAccessKey:
+    Description: This key-slot is toggled by lambda
+    Type: String
+    AllowedValues:
+      - True
+      - False
+    Default: False
 
 Conditions:
   HasAdditionalPolicies: !Not [ !Equals [ !Join [ "", !Ref ManagedPolicyArns ], "" ] ]
   HasConsoleAccess: !Equals [ !Ref ConsoleAccess, true ]
-  HasAccessKey: !Equals [ !Ref CreateAccessKey, true ]
+  HasPrimaryAccessKey: !Equals [ !Ref CreatePrimaryAccessKey, true ]
+  HasSecondaryAccessKey: !Equals [ !Ref CreateSecondaryAccessKey, true ]
 
 Resources:
   IAMUser:
@@ -62,15 +66,36 @@ Resources:
 
   IAMAccessKey:
     Type: AWS::IAM::AccessKey
-    Condition: HasAccessKey
+    Condition: HasPrimaryAccessKey
     Properties:
-      Serial: !Ref Serial
+      UserName: !Ref IAMUser
+
+  IAMAccessKey2:
+    Type: AWS::IAM::AccessKey
+    Condition: HasSecondaryAccessKey
+    Properties:
       UserName: !Ref IAMUser
 
   IAMSecretKey:
     Type: AWS::SecretsManager::Secret
-    Condition: HasAccessKey
+    Condition: HasPrimaryAccessKey
     Properties:
-      Name: !Ref IAMUser
+      Name: !Join [ "-", [ !Ref IAMUser, "key-1" ] ]
       Description: IAM User Secret Key
       SecretString: !Sub '{"accesskey": "${IAMAccessKey}", "secretkey": "${IAMAccessKey.SecretAccessKey}"}'
+
+  IAMSecretKey2:
+    Type: AWS::SecretsManager::Secret
+    Condition: HasSecondaryAccessKey
+    Properties:
+      Name: !Join [ "-", [ !Ref IAMUser, "key-2" ] ]
+      Description: IAM User Secret Key
+      SecretString: !Sub '{"accesskey": "${IAMAccessKey2}", "secretkey": "${IAMAccessKey2.SecretAccessKey}"}'
+
+Outputs:
+  PrimaryKey:
+    Condition: HasPrimaryAccessKey
+    Value: !Ref IAMAccessKey
+  SecondaryKey:
+    Condition: HasSecondaryAccessKey
+    Value: !Ref IAMAccessKey2
