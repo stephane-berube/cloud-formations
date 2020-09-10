@@ -59,7 +59,7 @@ Parameters:
     Default: mysql
   RDSEngineVersion:
     Type: String
-    Default: "8.0.20"
+    Default: "5.7.30"
   RDSSnapshot:
     Description: Specify if restoring from snapshot
     Type: String
@@ -145,14 +145,54 @@ Resources:
         RDSOptions: !If [ IsRDSRestore, "Restore", "Create" ]
         OCPIpAddress: ""
 
-  IngressPostgres:
+  ElasticSearch:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      # If you specify a name, you cannot perform updates that require replacement of this resource
+      # DomainName: zephyr
+      ElasticsearchVersion: "6.8"
+      ElasticsearchClusterConfig:
+        InstanceCount: 1
+        InstanceType: r5.large.elasticsearch
+      DomainEndpointOptions:
+        EnforceHTTPS: True
+        TLSSecurityPolicy: Policy-Min-TLS-1-2-2019-07
+      EBSOptions:
+        EBSEnabled: True
+        VolumeSize: 10
+        VolumeType: gp2
+      EncryptionAtRestOptions:
+        Enabled: True
+        KmsKeyId: c0599e59-952e-4e90-a7f0-229fad69ca25
+      NodeToNodeEncryptionOptions:
+        Enabled: True
+      VPCOptions:
+        SecurityGroupIds:
+          - !Ref ElasticSearchSG
+        SubnetIds:
+          - !Ref SubnetId
+
+  ElasticSearchSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPCId
+      GroupDescription: "Zephyr"
+      Tags:
+        - Key: Name
+          Value: !Join ['-', ["sg-es", !Ref "AWS::AccountId", !Ref ISEDProjectId ] ]
+        - Key: ised-cost-centre
+          Value: !Ref CostCentre
+        - Key: ised-project-id
+          Value: !Ref ISEDProjectId
+        - Key: ised-environment
+          Value: !Ref Environment
+
+  IngressES:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      Description: Allow incoming connections from EC2s from VPC to RDS on port 3306 (mysql/mariadb)
+      Description: Allow incoming connections from EC2 to ElasticSearch on port 443
       GroupId: !GetAtt RDS.Outputs.RDSSecurityGroup
       IpProtocol: tcp
-      FromPort: 3306
-      ToPort: 3306
-      CidrIp:
-        Fn::ImportValue:
-          Fn::Sub:  "vpc-cidrblock-${VPCName}-${Environment}"
+      FromPort: 443
+      ToPort: 443
+      CidrIp: !Join [ '/', [ !GetAtt EC2.Outputs.EC2PrivateIp, "32" ] ]
