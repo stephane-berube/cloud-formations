@@ -173,3 +173,17 @@ Resources:
         TargetType: ip
         TargetIpOrInstanceProd: 100.96.192.13
         TargetPortNumber: 8686
+
+  # Zephyr
+  ZephyrRoutes:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Join [ '', [!Ref S3Templates, "routing.yaml" ]]
+      Parameters:
+        ApplicationName: zephyr
+        Development: ised
+        ApplicationPort: 80
+        ApplicationProtocol: HTTP
+        TargetType: ip
+        TargetIpOrInstanceDev: 100.96.198.39
+        TargetPortNumber: 80
