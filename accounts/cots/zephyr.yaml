@@ -145,6 +145,15 @@ Resources:
         RDSOptions: !If [ IsRDSRestore, "Restore", "Create" ]
         OCPIpAddress: ""
 
+  # TODO: Update rds.yaml so we can provide our own DBParameterGroup
+  DBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: "max_connections to 500"
+      Family: mysql5.7
+      Parameters:
+        max_connections: "500"
+
   ElasticSearch:
     Type: AWS::Elasticsearch::Domain
     Properties:
@@ -187,11 +196,23 @@ Resources:
         - Key: ised-environment
           Value: !Ref Environment
 
-  IngressES:
+  IngressESHTTPS:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow incoming connections from EC2 to ElasticSearch on port 443
-      GroupId: !GetAtt RDS.Outputs.RDSSecurityGroup
+      GroupId: !Ref ElasticSearchSG
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: !Join [ '/', [ !GetAtt EC2.Outputs.EC2PrivateIp, "32" ] ]
+
+  # TODO: Figure out how to have Zephyr connect to ES over HTTPS, then remove
+  #       the following SecurityGroupIngress
+  IngressESHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming connections from EC2 to ElasticSearch on port 80
+      GroupId: !Ref ElasticSearchSG
       IpProtocol: tcp
       FromPort: 443
       ToPort: 443
