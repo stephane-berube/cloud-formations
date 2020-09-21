@@ -1,0 +1,158 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# Version 1.0 - Initial version
+Description: Enable versioning/logging on S3 Buckets. Version 1.0
+
+Parameters:
+  AccountIDMaster:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: AccountIDMaster
+  S3BucketNamePrefix:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: S3BucketNamePrefix
+  S3Templates:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: S3Templates
+
+Resources:
+  S3LoggingConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ised-s3-logging-config-rule
+      Scope:
+        ComplianceResourceTypes:
+        - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_LOGGING_ENABLED
+
+  S3VersioningConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ised-s3-versioning-config-rule
+      Scope:
+        ComplianceResourceTypes:
+        - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_VERSIONING_ENABLED
+
+  S3EncryptionConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ised-s3-encryption-config-rule
+      Scope:
+        ComplianceResourceTypes:
+        - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+
+  S3LoggingRemediation:
+    Type: AWS::Config::RemediationConfiguration
+    Properties:
+      Automatic: true
+      MaximumAutomaticAttempts: 10
+      RetryAttemptSeconds: 60
+      ConfigRuleName: !Ref S3LoggingConfigRule
+      TargetId: AWS-ConfigureS3BucketLogging
+      TargetType: SSM_DOCUMENT
+      TargetVersion: '1'
+      Parameters:
+        AutomationAssumeRole:
+          StaticValue:
+            Values:
+              - !GetAtt AutoRemediationIamRole.Arn # TODO
+        BucketName:
+          ResourceValue:
+            Value: RESOURCE_ID
+        GrantedPermission:
+          StaticValue:
+            Values:
+              - WRITE
+        GranteeType:
+          StaticValue:
+            Values:
+              - Group
+        GranteeUri:
+          StaticValue:
+            Values:
+              - "http://acs.amazonaws.com/groups/s3/LogDelivery" # ?!?!
+        TargetBucket:
+          StaticValue:
+            Values:
+              - !Sub "${S3BucketNamePrefix}-${AWS::AccountId}-log"
+        # FIXME: We can't have two "ResourceValue"...
+        # so I don't think we can use this remediation if we want the bucket
+        # name as the prefix...
+        TargetPrefix:
+          ResourceValue:
+            Value: RESOURCE_ID
+
+  # TODO: there is no managed remediation for this one
+  # S3VersioningRemediation:
+    # Type: AWS::Config::RemediationConfiguration
+    # Properties:
+      # Automatic: true
+      # MaximumAutomaticAttempts: 10
+      # RetryAttemptSeconds: 60
+      # ConfigRuleName: !Ref S3VersioningConfigRule
+      # TargetId: AWS-ConfigureS3BucketVersioning
+      # TargetType: SSM_DOCUMENT
+      # TargetVersion: '1'
+      # Parameters:
+      #  TODO
+
+  S3EncryptionRemediation:
+    Type: AWS::Config::RemediationConfiguration
+    Properties:
+      Automatic: true
+      MaximumAutomaticAttempts: 10
+      RetryAttemptSeconds: 60
+      ConfigRuleName: !Ref S3EncryptionConfigRule
+      TargetId: AWS-EnableS3BucketEncryption
+      TargetType: SSM_DOCUMENT
+      TargetVersion: '1'
+      Parameters:
+        AutomationAssumeRole:
+          StaticValue:
+            Values:
+              - !GetAtt AutoRemediationIamRole.Arn # TODO
+        BucketName:
+          ResourceValue:
+            Value: RESOURCE_ID
+
+  AutoRemediationIamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - events.amazonaws.com
+                - ssm.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole'
+      Policies:
+        - PolicyName: ised-config-s3-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:PutEncryptionConfiguration"
+                  - "s3:PutBucketLogging"
+                  - "s3:PutBucketVersioning"
+                Resource: 'arn:aws:s3:::*'
+        #- PolicyName: passAutomationRole
+        #  PolicyDocument:
+        #    Version: '2012-10-17'
+        #    Statement:
+        #      - Effect: Allow
+        #        Action:
+        #          - 'iam:PassRole'
+        #        Resource: !GetAtt AutoRemediationIamRole.Arn
